@@ -22,12 +22,14 @@ use crate::cbor;
 use crate::digit_encode;
 use crate::error::PxpError;
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub enum QrCodeOperationHint {
     #[serde(rename = "ga")]
     GetAssertionRequest,
     #[serde(rename = "mc")]
     MakeCredential,
+    #[serde(untagged)]
+    Custom(String),
 }
 
 /// One of the data transfer channels listed in QR code key 6.
