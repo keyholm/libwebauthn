@@ -108,7 +108,7 @@ impl Drop for ScanGuard {
 /// Starts a discovery for devices advertising service data on any of the provided UUIDs
 pub async fn start_discovery_for_service_data(
     uuids: &[Uuid],
-) -> Result<impl Stream<Item = (Peripheral, Vec<u8>)> + use<'_>, Error> {
+) -> Result<(Adapter, impl Stream<Item = (Peripheral, Vec<u8>)> + use<'_>), Error> {
     let adapter = get_adapter().await?;
     let scan_filter = ScanFilter::default();
 
@@ -122,6 +122,7 @@ pub async fn start_discovery_for_service_data(
     let scan_guard = ScanGuard(adapter.clone());
 
     let stream = events.filter_map({
+        let adapter = adapter.clone();
         move |event| {
             let _scan_guard = &scan_guard;
             let adapter = adapter.clone();
@@ -138,7 +139,7 @@ pub async fn start_discovery_for_service_data(
         }
     });
 
-    Ok(stream)
+    Ok((adapter, stream))
 }
 
 /// TODO(#86): Support multiple adapters.

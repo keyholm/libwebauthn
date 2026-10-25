@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use btleplug::api::Central as _;
 use ::btleplug::api::PeripheralProperties;
 use futures::StreamExt;
 use serde_cbor_2 as serde_cbor;
@@ -77,7 +78,7 @@ pub(crate) async fn await_advertisement(
         Uuid::parse_str(PXP_UUID_FIDO)?,
         Uuid::parse_str(PXP_UUID_GOOGLE)?, // Deprecated, but may still be in use.
     ];
-    let stream = ble::start_discovery_for_service_data(uuids).await?;
+    let (adapter, stream) = ble::start_discovery_for_service_data(uuids).await?;
 
     let mut stream = pin!(stream);
     while let Some((peripheral, data)) = stream.as_mut().next().await {
@@ -117,6 +118,11 @@ pub(crate) async fn await_advertisement(
             ?decrypted,
             "Successfully decrypted advertisement from device"
         );
+
+        adapter
+            .stop_scan()
+            .await
+            .or(Err(PxpError::TransportUnavailable))?;
 
         return Ok((device, advert));
     }

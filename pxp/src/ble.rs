@@ -48,7 +48,7 @@ async fn on_peripheral_service_data(
 #[instrument(level = Level::DEBUG, skip_all)]
 pub(crate) async fn start_discovery_for_service_data(
     uuids: &[Uuid],
-) -> Result<impl Stream<Item = (Peripheral, Vec<u8>)> + use<'_>, PxpError> {
+) -> Result<(Adapter, impl Stream<Item = (Peripheral, Vec<u8>)> + use<'_>), PxpError> {
     let adapter = get_adapter().await?;
     let events = adapter
         .events()
@@ -60,20 +60,22 @@ pub(crate) async fn start_discovery_for_service_data(
         .await
         .or(Err(PxpError::TransportUnavailable))?;
 
-    let scan_adapter = adapter.clone();
-    let stream = events.filter_map(move |event| {
-        let adapter = scan_adapter.clone();
-        async move {
-            match event {
-                CentralEvent::ServiceDataAdvertisement { id, service_data } => {
-                    on_peripheral_service_data(&adapter, &id, uuids, service_data).await
+    let stream = events.filter_map({
+        let adapter = adapter.clone();
+        move |event| {
+            let adapter = adapter.clone();
+            async move {
+                match event {
+                    CentralEvent::ServiceDataAdvertisement { id, service_data } => {
+                        on_peripheral_service_data(&adapter, &id, uuids, service_data).await
+                    }
+                    _ => None,
                 }
-                _ => None,
             }
         }
     });
 
-    Ok(stream)
+    Ok((adapter, stream))
 }
 
 pub(crate) async fn get_properties(
