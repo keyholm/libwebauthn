@@ -182,14 +182,18 @@ const SCAN_DURATION: std::time::Duration = std::time::Duration::from_secs(3);
 #[instrument(level = Level::DEBUG, skip_all)]
 pub async fn list_fido_devices() -> Result<Vec<FidoDevice>, Error> {
     let adapter = get_adapter().await?;
-    adapter
-        .start_scan(ScanFilter {
-            services: vec![FIDO_PROFILE_UUID],
-        })
-        .await
-        .or(Err(Error::ConnectionFailed))?;
-    tokio::time::sleep(SCAN_DURATION).await;
-    let _ = adapter.stop_scan().await;
+
+    {
+        let _scan_guard = ScanGuard(adapter.clone());
+        adapter
+            .start_scan(ScanFilter {
+                services: vec![FIDO_PROFILE_UUID],
+            })
+            .await
+            .or(Err(Error::ConnectionFailed))?;
+        tokio::time::sleep(SCAN_DURATION).await;
+    }
+
     let peripherals: Vec<Peripheral> = adapter
         .peripherals()
         .await
